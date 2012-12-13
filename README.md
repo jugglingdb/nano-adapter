@@ -23,7 +23,7 @@ To use it you need `jugglingdb@0.2.x`.
 
     ```javascript
         var Schema = require('jugglingbd').Schema;
-        var schema = new Schema('nano');
+        var schema = new Schema('nano', {url: 'http://localhost:5984/nano-test'});
         ...
     ```
 
