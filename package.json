@@ -3,6 +3,15 @@
   "version": "0.0.1",
   "description": "CouchDB-nano adapter for jugglingdb",
   "main": "index.js",
+  "contributors": [ {
+      "name": "Nicholas Westlake",
+      "email": "nicholasredlin@gmail.com"
+    },
+    {
+      "name": "Anatoliy Chakkaev",
+      "email": "rpm1602@gmail.com"
+    },
+  ],
   "scripts": {
     "test": "nodeunit test/nano.js"
   },
@@ -15,6 +24,6 @@
     "nodeunit": "latest"
   },
   "repository": "",
-  "author": "Nicholas Westlake",
+  "author": "Nicholas Westlake <nicholasredlin@gmail.com>",
   "license": "MIT"
 }
