@@ -135,7 +135,7 @@ helpers =
     key.replace(/\s+(A|DE)SC/i, "")
   savePrep: (data) ->
     if id = data.id
-      delete data.id
       data._id = id.toString()
+    delete data.id
     if data._rev is null
       delete data._rev
