@@ -120,6 +120,8 @@ class NanoAdapter
 
         docs.sort sorting.bind orders
       callback err, (@fromDB model, doc for doc in docs)
+  defineForeignKey: (className, key, cb) =>
+    cb false, String
 
 # helpers
 helpers =
