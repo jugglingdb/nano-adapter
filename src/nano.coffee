@@ -2,6 +2,19 @@
 
 # api
 exports.initialize = (schema, callback) ->
+  
+  # convert schema.settings to valid nano url:
+  # http[s]://[username:password@]host[:port][/database]
+  unless schema.settings.url
+    schema.settings.url = "http" + (if schema.settings.ssl then "s" else "") + "://"
+    if schema.settings.username and schema.settings.password
+      schema.settings.url += schema.settings.username + ":" + schema.settings.password + "@"
+    schema.settings.url += schema.settings.host
+    if schema.settings.port
+      schema.settings.url += ":" + schema.settings.port
+    if schema.settings.database
+      schema.settings.url += "/" + schema.settings.database
+  
   throw new Error 'url is missing' unless opts = schema.settings
   db = require('nano')(opts)
 
