@@ -1,4 +1,4 @@
-## JugglingDB-Nano [![Build Status](https://travis-ci.org/1602/jugglingdb-nano.png)](https://travis-ci.org/1602/jugglingdb-nano)
+## JugglingDB-Nano [![Build Status](https://api.travis-ci.org/jugglingdb/nano-adapter.png)](https://travis-ci.org/jugglingdb/nano-adapter)
 
 CouchDB-nano adapter for jugglingdb.
 
