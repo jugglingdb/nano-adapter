@@ -33,6 +33,10 @@ Make sure you have couchdb server running on default port
 
     npm test
 
+## Contributing
+
+Please make changes to files in the `src` folder and then compile with `cake build` before sending a pull request.
+
 ## MIT License
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
