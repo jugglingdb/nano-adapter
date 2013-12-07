@@ -27,19 +27,19 @@ class NanoAdapter
     @_models = {}
 
   define: (descr) =>
-    m = descr.model.modelName
     descr.properties._rev = type: String
-    @_models[m] = descr
+    @_models[descr.model.modelName] = descr
 
   create: (args...) => @save args...
 
   save: (model, data, callback) =>
-    data.model = model
+    data.model = @table model
     helpers.savePrep data
 
     @db.insert @forDB(model, data), (err, doc) =>
       return callback err if err
-      callback null, doc.id, doc.rev
+      data._rev = doc.rev
+      callback null, doc.id, doc.rev #doc.id, doc.rev
 
   updateOrCreate: (model, data = {}, callback) =>
     @exists model, data.id, (err, exists) =>
@@ -58,6 +58,7 @@ class NanoAdapter
 
   find: (model, id, callback) =>
     @db.get id, (err, doc) =>
+      return callback null, null if err and err.status_code is 404
       return callback err if err
       callback null, @fromDB(model, doc)
 
@@ -105,7 +106,7 @@ class NanoAdapter
 
   all: (model, filter, callback) =>
     params =
-      keys: [model]
+      keys: [@table model]
       include_docs: yes
 
     @db.view 'nano', 'by_model', params, (err, body) =>
@@ -137,10 +138,20 @@ class NanoAdapter
             key: helpers.stripOrder key
 
         docs.sort sorting.bind orders
-      callback null, (@fromDB model, doc for doc in docs)
 
-  defineForeignKey: (className, key, callback) =>
-    callback false, String
+      if filter?.limit
+        docs = docs.slice(0, filter.limit)
+
+      return callback null, (@fromDB model, doc for doc in docs)
+
+  defineForeignKey: (model, key, callback) =>
+    callback null, String
+
+  defineProperty: (model, prop, params) =>
+    @_models[model].properties[prop] = params
+
+  table: (model) =>
+    @_models[model].model.tableName
 
 # helpers
 helpers =

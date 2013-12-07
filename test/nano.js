@@ -1,11 +1,14 @@
-var jdb = require('jugglingdb'),
-    Schema = jdb.Schema,
-    test = jdb.test,
-    schema = new Schema(__dirname + '/..', {
-        url: 'http://localhost:5984/nano-test'
+describe('nano imported features', function() {
+
+    before(function() {
+        require('./init.js');
     });
 
-schema.name = 'nano';
+    require('jugglingdb/test/datatype.test.js');
+    require('jugglingdb/test/basic-querying.test.js');
+    // require('jugglingdb/test/hooks.test.js');
+    require('./hooks.test.js'); // copied from core, added _rev
+    require('jugglingdb/test/relations.test.js');
+    // require('jugglingdb/test/include.test.js');
 
-test(module.exports, schema);
-
+});

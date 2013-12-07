@@ -1,6 +1,6 @@
 {
   "name": "jugglingdb-nano",
-  "version": "0.0.2",
+  "version": "0.0.3-pre",
   "description": "CouchDB-nano adapter for jugglingdb",
   "main": "index.js",
   "contributors": [
@@ -14,17 +14,22 @@
     }
   ],
   "scripts": {
-    "test": "nodeunit test/nano.js"
+    "test": "./node_modules/.bin/mocha -G test/*.js"
   },
   "dependencies": {
     "nano": "4.2.x",
     "lodash": "2.4.x"
   },
   "devDependencies": {
-    "jugglingdb": "0.2.x",
-    "nodeunit": "latest"
+    "jugglingdb": "https://github.com/1602/jugglingdb/archive/master.tar.gz",
+    "should": "~1.2.2",
+    "mocha": "~1.8.2",
+    "semicov": "~0.1.1"
   },
-  "repository": "",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/jugglingdb/nano-adapter.git"
+  },
   "author": "Nicholas Westlake <nicholasredlin@gmail.com>",
   "license": "MIT"
 }
