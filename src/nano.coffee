@@ -2,7 +2,6 @@
 
 # api
 exports.initialize = (schema, callback) ->
-  
   # convert schema.settings to valid nano url:
   # http[s]://[username:password@]host[:port][/database]
   unless schema.settings.url
@@ -14,14 +13,14 @@ exports.initialize = (schema, callback) ->
       schema.settings.url += ":" + schema.settings.port
     if schema.settings.database
       schema.settings.url += "/" + schema.settings.database
-  
+
   throw new Error 'url is missing' unless opts = schema.settings
   db = require('nano')(opts)
 
   schema.adapter = new NanoAdapter db
   design = views: by_model: map:
     'function (doc) { if (doc.model) return emit(doc.model, null); }'
-  db.insert design, '_design/nano', (err, doc) -> callback()
+  db.insert design, '_design/nano', callback
 
 class NanoAdapter
   constructor: (@db) ->
@@ -33,23 +32,25 @@ class NanoAdapter
     @_models[m] = descr
 
   create: (args...) => @save args...
-  
+
   save: (model, data, callback) =>
     data.model = model
     helpers.savePrep data
 
     @db.insert @forDB(model, data), (err, doc) =>
-      callback err, doc.id, doc.rev
+      return cb err if err
+      callback null, doc.id, doc.rev
 
-  updateOrCreate: (model, data, callback) =>
+  updateOrCreate: (model, data = {}, callback) =>
     @exists model, data.id, (err, exists) =>
-      if exists
-        @save model, data, callback
-      else
-        @create model, data, (err, id) ->
-          data.id = id
-          callback err, data
-  
+      return callback err if err
+      return @save model, data, callback if exists
+
+      @create model, data, (err, id) ->
+        return callback err if err
+        data.id = id
+        callback null, data
+
   exists: (model, id, callback) =>
     @db.head id, (err, _, headers) ->
       return callback null, no if err
@@ -57,7 +58,8 @@ class NanoAdapter
 
   find: (model, id, callback) =>
     @db.get id, (err, doc) =>
-      callback err, @fromDB(model, doc)
+      return callback err if err
+      callback null, @fromDB(model, doc)
 
   destroy: (model, id, callback) =>
     @db.get id, (err, doc) =>
@@ -65,23 +67,24 @@ class NanoAdapter
       @db.destroy id, doc._rev, (err, doc) =>
         return callback err if err
         callback.removed = yes
-        callback()
-  
+        callback null
+
   updateAttributes: (model, id, data, callback) =>
     @db.get id, (err, base) =>
       return callback err if err
       @save model, helpers.merge(base, data), callback
-  
+
   count: (model, callback, where) =>
     @all model, {where}, (err, docs) =>
-      callback err, docs.length
+      return callback err if err
+      callback null, docs.length
 
   destroyAll: (model, callback) =>
     @all model, {}, (err, docs) =>
+      return callback err if err
       docs = for doc in docs
         {_id: doc.id, _rev: doc._rev, _deleted: yes}
-      @db.bulk {docs}, (err, body) =>
-        callback err, body
+      @db.bulk {docs}, callback
 
   forDB: (model, data = {}) =>
     props = @_models[model].properties
@@ -99,18 +102,20 @@ class NanoAdapter
         date.setTime data[k]
         data[k] = date
     data
-    
+
   all: (model, filter, callback) =>
-    params = 
+    params =
       keys: [model]
       include_docs: yes
 
     @db.view 'nano', 'by_model', params, (err, body) =>
+      return cb err if err
+
       docs = for row in body.rows
         row.doc.id = row.doc._id
         delete row.doc._id
         row.doc
-      
+
       if where = filter?.where
         for k, v of where
           where[k] = v.getTime() if _.isDate v
@@ -118,7 +123,7 @@ class NanoAdapter
 
       if orders = filter?.order
         orders = [orders] if _.isString orders
-        
+
         sorting = (a, b) ->
           for item, i in @
             ak = a[@[i].key]; bk = b[@[i].key]; rev = @[i].reverse
@@ -132,7 +137,8 @@ class NanoAdapter
             key: helpers.stripOrder key
 
         docs.sort sorting.bind orders
-      callback err, (@fromDB model, doc for doc in docs)
+      callback null, (@fromDB model, doc for doc in docs)
+
   defineForeignKey: (className, key, cb) =>
     cb false, String
 
