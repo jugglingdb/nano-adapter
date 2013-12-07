@@ -38,7 +38,7 @@ class NanoAdapter
     helpers.savePrep data
 
     @db.insert @forDB(model, data), (err, doc) =>
-      return cb err if err
+      return callback err if err
       callback null, doc.id, doc.rev
 
   updateOrCreate: (model, data = {}, callback) =>
@@ -109,7 +109,7 @@ class NanoAdapter
       include_docs: yes
 
     @db.view 'nano', 'by_model', params, (err, body) =>
-      return cb err if err
+      return callback err if err
 
       docs = for row in body.rows
         row.doc.id = row.doc._id
@@ -139,8 +139,8 @@ class NanoAdapter
         docs.sort sorting.bind orders
       callback null, (@fromDB model, doc for doc in docs)
 
-  defineForeignKey: (className, key, cb) =>
-    cb false, String
+  defineForeignKey: (className, key, callback) =>
+    callback false, String
 
 # helpers
 helpers =
