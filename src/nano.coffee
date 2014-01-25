@@ -20,7 +20,8 @@ exports.initialize = (schema, callback) ->
   schema.adapter = new NanoAdapter db
   design = views: by_model: map:
     'function (doc) { if (doc.model) return emit(doc.model, null); }'
-  db.insert design, '_design/nano', callback
+
+  helpers.updateDesign db, '_design/nano', design, callback
 
 class NanoAdapter
   constructor: (@db) ->
@@ -28,7 +29,22 @@ class NanoAdapter
 
   define: (descr) =>
     descr.properties._rev = type: String
-    @_models[descr.model.modelName] = descr
+    modelName = descr.model.modelName
+    # Add index views for schemas that have indexes
+    design =
+      views: {}
+    hasIndexes = false
+    for propName, value of descr.properties
+      if value.index
+        hasIndexes = true
+        viewName = helpers.viewName propName
+        design.views[viewName] =
+          map: 'function (doc) { if (doc.model === \'' + modelName + '\') return emit(doc.' + propName + ', null); }'
+    if hasIndexes
+      designName = '_design/' + helpers.designName modelName
+      helpers.updateDesign this.db, designName, design
+
+    @_models[modelName] = descr
 
   create: (args...) => @save args...
 
@@ -114,8 +130,30 @@ class NanoAdapter
     params =
       keys: [@table model]
       include_docs: yes
+    # TODO: Consider not using skip when iterating over all the docs in a view
+    params.skip = filter.offset if filter.offset
+    params.limit = filter.limit if filter.limit
 
-    @db.view 'nano', 'by_model', params, (err, body) =>
+    # We always fallback on nano/by_model view as it allows us
+    # to iterate over all the docs for a model. But check if
+    # there is a specialized view for one of the where conditions.
+    designName = 'nano'
+    viewName = 'by_model'
+    if where = filter?.where
+      props = @_models[model].properties
+      for propName, value of where
+        # We can use an optimal view when a where "clause" uses an indexed property
+        if value and props[propName]? and props[propName].index
+          # Use the design and view for the model and propName
+          designName = helpers.designName model
+          viewName = helpers.viewName propName
+          # CouchDb stores dates as Unix time
+          params.key = if _.isDate value then value.getTime() else value
+          # We don't want to use keys - we now have a key property
+          delete params.keys
+          break
+
+    @db.view designName, viewName, params, (err, body) =>
       return callback err if err
 
       docs = for row in body.rows
@@ -125,6 +163,7 @@ class NanoAdapter
 
       if where = filter?.where
         for k, v of where
+          # CouchDb stores dates as Unix time
           where[k] = v.getTime() if _.isDate v
         docs = _.where docs, where
 
@@ -182,3 +221,34 @@ helpers =
       data.id = _id.toString()
     delete data._id
     return
+  designName: (modelName) ->
+    'nano-' + modelName
+  viewName: (propName) ->
+    'by_' + propName
+  invokeCallbackOrLogError: (callback, err, res) ->
+    # When callback exists let it handle the error and result
+    if callback
+      callback err, res
+    else if err
+      # Without a callback we can at least log the error
+      console.log err
+  updateDesign: (db, designName, design, callback) ->
+    # Add the design document to the database or update it if it already exists.
+    db.get designName, (err, designDoc) =>
+      if err && err.error != 'not_found'
+        helpers.invokeCallbackOrLogError callback, err, designDoc
+        return
+
+      # Update the design doc
+      if !designDoc
+        designDoc = design
+      else
+        # We only update the design when its views have changed - this avoids rebuilding the views.
+        if _.isEqual(designDoc.views, design.views)
+          helpers.invokeCallbackOrLogError callback, null, designDoc
+          return
+        designDoc.views = design.views
+
+      # Insert the design doc into the database.
+      db.insert designDoc, designName, (err, insertedDoc) =>
+        helpers.invokeCallbackOrLogError callback, err, insertedDoc
