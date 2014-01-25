@@ -38,7 +38,13 @@ class NanoAdapter
 
     @db.insert @forDB(model, data), (err, doc) =>
       return callback err if err
+      # Undo the effects of savePrep as data object is the only one
+      # that the JugglingDb model can access.
+      helpers.undoPrep data
+      # Update the data object with the revision returned by CouchDb.
       data._rev = doc.rev
+      # This callback makes no sense in the context of JugglingDb invocation
+      # but I'm leaving it as-is for other possible use cases.
       callback null, doc.id, doc.rev #doc.id, doc.rev
 
   updateOrCreate: (model, data = {}, callback) =>
@@ -171,3 +177,8 @@ helpers =
     delete data.id
     if data._rev is null
       delete data._rev
+  undoPrep: (data) ->
+    if _id = data._id
+      data.id = _id.toString()
+    delete data._id
+    return
