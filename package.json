@@ -14,7 +14,7 @@
     }
   ],
   "scripts": {
-    "test": "./node_modules/.bin/mocha -G test/*.js"
+    "test": "./node_modules/.bin/mocha -G --reporter mocha-unfunk-reporter test/*.js"
   },
   "dependencies": {
     "nano": "4.2.x",
@@ -23,8 +23,9 @@
   "devDependencies": {
     "jugglingdb": "https://github.com/1602/jugglingdb/archive/master.tar.gz",
     "should": "~1.2.2",
-    "mocha": "~1.8.2",
-    "semicov": "~0.1.1"
+    "mocha": "~1.17.1",
+    "semicov": "~0.1.1",
+    "mocha-unfunk-reporter": "~0.4.0"
   },
   "repository": {
     "type": "git",
