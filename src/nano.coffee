@@ -150,7 +150,7 @@ class NanoAdapter
           delete params.keys
           # We don't want to use this where clause as it's done on the server-side through the use of view
           # This is safe even though we are iterating over where as we are breaking below.
-          delete filter.where.value
+          delete filter.where[propName]
           # If all the filtering is done on the server-side we can now remove the entire where
           delete filter.where if _.isEmpty(filter.where)
           # We can only use one view so we assume that one is as good as the other
