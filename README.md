@@ -44,12 +44,8 @@ During querying of database this adapter will:
 ### Query parameters
 
 - All queries to the database use `include_docs` set to `true`
-- jugglingdb's `offset` is used as `skip` query parameter
-- jugglingdb's `limit` is used as `limit` query parameter
-
-## Known issues
-
-- jugglingdb's `findOne` (and methods that depend on it) has to be used only for keys with unique indexes as it passes `limit` of 1 to the adapter which then retrieves just the first document in the view which may or may not match the other `where` conditions.
+- jugglingdb's `offset` is used as `skip` query parameter except when using `order` or unindexed/multi-condition `where`
+- jugglingdb's `limit` is used as `limit` query parameter except when using `order` or unindexed/multi-condition `where`
 
 ## Running tests
 

@@ -39,7 +39,7 @@ class NanoAdapter
         hasIndexes = true
         viewName = helpers.viewName propName
         design.views[viewName] =
-          map: 'function (doc) { if (doc.model === \'' + modelName + '\') return emit(doc.' + propName + ', null); }'
+          map: 'function (doc) { if (doc.model && doc.model === \'' + modelName + '\' && doc.' + propName + ') return emit(doc.' + propName + ', null); }'
     if hasIndexes
       designName = '_design/' + helpers.designName modelName
       helpers.updateDesign this.db, designName, design
@@ -130,9 +130,6 @@ class NanoAdapter
     params =
       keys: [@table model]
       include_docs: yes
-    # TODO: Consider not using skip when iterating over all the docs in a view
-    params.skip = filter.offset if filter.offset
-    params.limit = filter.limit if filter.limit
 
     # We always fallback on nano/by_model view as it allows us
     # to iterate over all the docs for a model. But check if
@@ -151,7 +148,25 @@ class NanoAdapter
           params.key = if _.isDate value then value.getTime() else value
           # We don't want to use keys - we now have a key property
           delete params.keys
+          # We don't want to use this where clause as it's done on the server-side through the use of view
+          # This is safe even though we are iterating over where as we are breaking below.
+          delete filter.where[propName]
+          # If all the filtering is done on the server-side we can now remove the entire where
+          delete filter.where if _.isEmpty(filter.where)
+          # We can only use one view so we assume that one is as good as the other
+          # (which may not be true as one may have less docs referenced in it but we
+          # cannot know in advance)
           break
+
+    # Client-side processing has to be done when we are doing ordering and filtering (where).
+    # If there was any matching view we are already using it.
+    doClientSideProcessing = not filter or filter.order or filter.where
+    # When doing client-side processing we can't use CouchDb's skip and limit.
+    # TODO: Consider issuing performance warnings for larger datasets (e.g. row count > 1,000)
+    # TODO: When doing no-limit query we should split the workload into smaller chunks.
+    if not doClientSideProcessing
+      params.skip = filter.offset if filter.offset
+      params.limit = filter.limit if filter.limit
 
     @db.view designName, viewName, params, (err, body) =>
       return callback err if err
@@ -161,31 +176,36 @@ class NanoAdapter
         delete row.doc._id
         row.doc
 
-      if where = filter?.where
-        for k, v of where
-          # CouchDb stores dates as Unix time
-          where[k] = v.getTime() if _.isDate v
-        docs = _.where docs, where
+      if doClientSideProcessing
+        if where = filter?.where
+          for k, v of where
+            # CouchDb stores dates as Unix time
+            where[k] = v.getTime() if _.isDate v
+          docs = _.where docs, where
 
-      if orders = filter?.order
-        orders = [orders] if _.isString orders
+        if orders = filter?.order
+          orders = [orders] if _.isString orders
 
-        sorting = (a, b) ->
-          for item, i in @
-            ak = a[@[i].key]; bk = b[@[i].key]; rev = @[i].reverse
-            if ak > bk then return 1 * rev
-            if ak < bk then return -1 * rev
-          0
+          sorting = (a, b) ->
+            for item, i in @
+              ak = a[@[i].key]; bk = b[@[i].key]; rev = @[i].reverse
+              if ak > bk then return 1 * rev
+              if ak < bk then return -1 * rev
+            0
 
-        for key, i in orders
-          orders[i] =
-            reverse: helpers.reverse key
-            key: helpers.stripOrder key
+          for key, i in orders
+            orders[i] =
+              reverse: helpers.reverse key
+              key: helpers.stripOrder key
 
-        docs.sort sorting.bind orders
+          docs.sort sorting.bind orders
 
-      if filter?.limit
-        docs = docs.slice(0, filter.limit)
+        if doClientSideProcessing
+          if filter?.offset
+            docs = docs.slice(filter.offset)
+
+          if filter?.limit
+            docs = docs.slice(0, filter.limit)
 
       return callback null, (@fromDB model, doc for doc in docs)
 
