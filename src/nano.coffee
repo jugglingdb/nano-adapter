@@ -61,7 +61,7 @@ class NanoAdapter
       data._rev = doc.rev
       # This callback makes no sense in the context of JugglingDb invocation
       # but I'm leaving it as-is for other possible use cases.
-      callback null, doc.id, doc.rev #doc.id, doc.rev
+      callback null, doc.id, doc #doc.id, doc.rev
 
   updateOrCreate: (model, data = {}, callback) =>
     @exists model, data.id, (err, exists) =>
